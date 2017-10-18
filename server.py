@@ -57,18 +57,25 @@ article_db = connect_article_db()
 def index():
     return render_template("index.html")
 
+@app.route("/demo.html")
+def demo():
+    return render_template("intro.html")
+
 @app.route("/headlines.json")
 def headlines():
     try:
         listed_words = request.args.get('keywords', default='ZZZZZZ')  # if no keywords input, try not to match anything
         keywords = listed_words.split(',')
+        #build out regex for each keyword (whitespace on each side)
+        #for i, word in enumerate(keywords):
+        #    keywords[i] = '\s' + word + '\s'
+
         # Code will be here
-        jsonStr = dumps(article_db.find({'title' : {'$regex' : '.*(' + '|'.join(keywords) + ').*'}}))
+        jsonOut = dumps(article_db.find({'title' : {'$regex' : '.*(' + '|'.join(keywords) + ').*'}}))
 
     except Exception as e:
         print(str(e))
 
-    jsonOut = jsonify(jsonStr)
     return jsonOut
 
 @app.route("/_getdb")
