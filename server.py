@@ -1,7 +1,14 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, request, jsonify, json
 import pymongo
 import json
 from bson.json_util import dumps
+
+def connect_article_db():
+    url = "mongodb://127.0.0.1:27017"
+    client = pymongo.MongoClient(url)
+    db = client['aggieChallenge']
+    collection = db['articles']
+    return collection
 
 app = Flask(__name__)
 
@@ -34,9 +41,25 @@ outfile.write(']')
 '''
 outfile.close()
 
+global article_db
+article_db = connect_article_db()
+
 @app.route("/")
 def hello():
     return render_template("index.html")
+
+@app.route("/headlines")
+def headlines():
+    try:
+        listed_words = request.args.get('keywords', default='ZZZZZZ')  # if no keywords input, try not to match anything
+        keywords = listed_words.split(',')
+        # Code will be here
+        jsonStr = article_db.find({'title' : {'$regex' : '.*(' + '|'.join(keywords) + ').*'}})
+
+    except Exception as e:
+        print(str(e))
+
+    return jsonify(jsonStr)
 
 @app.route("/_getdb")
 def getDB():
