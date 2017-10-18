@@ -1,6 +1,8 @@
 from flask import Flask, render_template, request, jsonify, json
 import pymongo
 import json
+import os
+import ssl
 from bson.json_util import dumps
 
 def connect_article_db():
@@ -13,16 +15,23 @@ def connect_article_db():
 app = Flask(__name__)
 
 path = "static"
-client = pymongo.MongoClient("mongodb://TAMU:aggie123@weatherdata-shard-00-00-vhgp9.mongodb.net:27017,weatherdata-shard-00-01-vhgp9.mongodb.net:27017,weatherdata-shard-00-02-vhgp9.mongodb.net:27017/test?ssl=true&replicaSet=WeatherData-shard-0&authSource=admin")
+shard_info = "@weatherdata-shard-00-00-vhgp9.mongodb.net:27017,weatherdata-shard-00-01-vhgp9.mongodb.net:27017,weatherdata-shard-00-02-vhgp9.mongodb.net:27017/test?ssl=true&replicaSet=WeatherData-shard-0&authSource=admin"
+
+client = pymongo.MongoClient(
+    "mongodb://" + os.environ['ATLAS_USER'] + ":" + os.environ['ATLAS_PASSWORD'] + shard_info,
+    ssl=True,
+    ssl_cert_reqs=ssl.CERT_NONE)
+
 db = client["WeatherData"]
 
-tweets = db.testTrial2.find()
+tweets = db['testTrial2']
 
 count=0
 
 outfile=open(path+'/temp1.json','w+')
 #outfile.write('[')
-s=dumps(tweets)
+print(list(tweets.find()))
+s=dumps(tweets.find())
 outfile.write(s)
 '''for tweet in tweets:
     #print(tweet)
@@ -45,21 +54,22 @@ global article_db
 article_db = connect_article_db()
 
 @app.route("/")
-def hello():
+def index():
     return render_template("index.html")
 
-@app.route("/headlines")
+@app.route("/headlines.json")
 def headlines():
     try:
         listed_words = request.args.get('keywords', default='ZZZZZZ')  # if no keywords input, try not to match anything
         keywords = listed_words.split(',')
         # Code will be here
-        jsonStr = article_db.find({'title' : {'$regex' : '.*(' + '|'.join(keywords) + ').*'}})
+        jsonStr = dumps(article_db.find({'title' : {'$regex' : '.*(' + '|'.join(keywords) + ').*'}}))
 
     except Exception as e:
         print(str(e))
 
-    return jsonify(jsonStr)
+    jsonOut = jsonify(jsonStr)
+    return jsonOut
 
 @app.route("/_getdb")
 def getDB():
